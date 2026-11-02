@@ -1,0 +1,26 @@
+name: verify
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22.22.2'
+      - run: npm install --global pnpm@10.33.0
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm run build
+      - run: git diff --exit-code -- lib
+      - run: pnpm run check
+      - run: pnpm test
+      - run: pnpm run verify:licenses
+      - run: pnpm run verify:public
+      - run: pnpm run verify:package
+      - run: pnpm run test:package

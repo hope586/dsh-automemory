@@ -1,0 +1,15 @@
+import { build } from 'esbuild';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+await mkdir('lib', { recursive: true });
+const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(x => x.isDirectory() ? walk(dir + '/' + x.name) : [dir + '/' + x.name]);
+const fingerprint = createHash('sha256').update(version);
+for (const file of ['package.json', ...walk('src'), ...walk('prompts'), ...walk('schemas')].sort()) fingerprint.update(file).update(readFileSync(file));
+const buildId = fingerprint.digest('hex').slice(0, 16);
+await build({ entryPoints: ['src/index.js'], outfile: 'lib/index.js', bundle: true, platform: 'node', target: 'node22', format: 'esm', external: ['@deepseek-ai/*'], loader: { '.md': 'text' }, legalComments: 'inline', define: { __DAM_VERSION__: JSON.stringify(version), __DAM_BUILD__: JSON.stringify(buildId) } });
+const css = await readFile('src/style.css', 'utf8');
+const client = await build({ entryPoints: ['src/client.js'], bundle: true, platform: 'browser', format: 'iife', globalName: '__AutoMemoryClient', write: false, target: 'es2022', legalComments: 'inline' });
+await writeFile('lib/client.js', `window.__ModuleLoader__.load({id:'dsh-automemory',factory:require=>{const React=require('react');const NativeMarkdown=require('@deepseek-ai/dsh-client-ui-primitives').MarkdownText;const STYLE=${JSON.stringify(css)};${client.outputFiles[0].text}\nreturn __AutoMemoryClient;}});\n`);
+await writeFile('lib/build.json', JSON.stringify({ version, build: buildId, targetDsh: '0.2.1-rc.5' }) + '\n');

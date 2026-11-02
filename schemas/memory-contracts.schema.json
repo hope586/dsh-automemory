@@ -1,0 +1,1883 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:dsh-memory:contracts:r2",
+  "title": "DSH Memory r2 declarative exchange contracts",
+  "description": "Environment-independent declarations. Default root is DraftResult; other contracts are available under $defs. Structure validation is not authorization or runtime verification.",
+  "$ref": "#/$defs/DraftResult",
+  "$defs": {
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "source_kind": {
+          "enum": [
+            "session_event",
+            "project_file",
+            "memory_record",
+            "audit_artifact"
+          ]
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version_hint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "source_kind",
+        "locator"
+      ],
+      "additionalProperties": false
+    },
+    "MarkdownPayload": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "markdown"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "kind",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "TaskPayload": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "task"
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "progress": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "next_actions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "kind",
+        "goal"
+      ],
+      "additionalProperties": false
+    },
+    "MemoryContent": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "enum": [
+            "stable",
+            "active"
+          ]
+        },
+        "index_hint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conditions": {
+          "type": "string"
+        },
+        "payload": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MarkdownPayload"
+            },
+            {
+              "$ref": "#/$defs/TaskPayload"
+            }
+          ]
+        },
+        "format_reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "index_hint",
+        "group",
+        "conditions",
+        "payload"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "stable"
+              }
+            },
+            "required": [
+              "category"
+            ]
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/MarkdownPayload"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "const": "active"
+              },
+              "payload": {
+                "properties": {
+                  "kind": {
+                    "const": "markdown"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "category",
+              "payload"
+            ]
+          },
+          "then": {
+            "required": [
+              "format_reason"
+            ]
+          }
+        }
+      ]
+    },
+    "MemoryRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "current",
+            "archived",
+            "retracted"
+          ]
+        },
+        "content": {
+          "$ref": "#/$defs/MemoryContent"
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "description": "Retained provenance accumulated across revisions, minus explicit removals. Historical references are not necessarily reverified now or proof of every current statement."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replacement_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "change_source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "maxItems": 256,
+          "description": "Evidence for the latest actual change. Empty for legacy records whose change basis was not separately recorded."
+        }
+      },
+      "required": [
+        "id",
+        "workspace_id",
+        "version",
+        "status",
+        "content",
+        "source_refs",
+        "created_at",
+        "updated_at"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "archived",
+                  "retracted"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "status_reason"
+            ]
+          }
+        }
+      ]
+    },
+    "CreateOperation": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "CREATE"
+        },
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "description": "Evidence for this change. The host retains existing record provenance by default; do not copy metadata/Sources blocks into content."
+        },
+        "local_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "$ref": "#/$defs/MemoryContent"
+        }
+      },
+      "required": [
+        "op",
+        "operation_key",
+        "reason",
+        "source_refs",
+        "local_key",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "UpdateOperation": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "UPDATE"
+        },
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "description": "Evidence for this change. The host retains existing record provenance by default; do not copy metadata/Sources blocks into content."
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "$ref": "#/$defs/MemoryContent"
+        },
+        "remove_source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRemoval"
+          },
+          "maxItems": 256,
+          "description": "Optional explicit removals of existing provenance, guarded by expected_version. Omission retains old references."
+        }
+      },
+      "required": [
+        "op",
+        "operation_key",
+        "reason",
+        "source_refs",
+        "target_id",
+        "expected_version",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "RestoreOperation": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "RESTORE"
+        },
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "description": "Evidence for this change. The host retains existing record provenance by default; do not copy metadata/Sources blocks into content."
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "$ref": "#/$defs/MemoryContent"
+        },
+        "remove_source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRemoval"
+          },
+          "maxItems": 256,
+          "description": "Optional explicit removals of existing provenance, guarded by expected_version. Omission retains old references."
+        }
+      },
+      "required": [
+        "op",
+        "operation_key",
+        "reason",
+        "source_refs",
+        "target_id",
+        "expected_version",
+        "content"
+      ],
+      "additionalProperties": false
+    },
+    "ArchiveOperation": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "ARCHIVE"
+        },
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "description": "Evidence for this change. The host retains existing record provenance by default; do not copy metadata/Sources blocks into content."
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replacement_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "remove_source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRemoval"
+          },
+          "maxItems": 256,
+          "description": "Optional explicit removals of existing provenance, guarded by expected_version. Omission retains old references."
+        }
+      },
+      "required": [
+        "op",
+        "operation_key",
+        "reason",
+        "source_refs",
+        "target_id",
+        "expected_version"
+      ],
+      "additionalProperties": false
+    },
+    "RetractOperation": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "RETRACT"
+        },
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "description": "Evidence for this change. The host retains existing record provenance by default; do not copy metadata/Sources blocks into content."
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replacement_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "remove_source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRemoval"
+          },
+          "maxItems": 256,
+          "description": "Optional explicit removals of existing provenance, guarded by expected_version. Omission retains old references."
+        }
+      },
+      "required": [
+        "op",
+        "operation_key",
+        "reason",
+        "source_refs",
+        "target_id",
+        "expected_version"
+      ],
+      "additionalProperties": false
+    },
+    "DeleteOperation": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "const": "DELETE"
+        },
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "maxItems": 256,
+          "description": "Evidence for this change. The host retains existing record provenance by default; do not copy metadata/Sources blocks into content."
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "op",
+        "operation_key",
+        "reason",
+        "source_refs",
+        "target_id",
+        "expected_version"
+      ],
+      "additionalProperties": false
+    },
+    "MemoryOperation": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/CreateOperation"
+        },
+        {
+          "$ref": "#/$defs/UpdateOperation"
+        },
+        {
+          "$ref": "#/$defs/ArchiveOperation"
+        },
+        {
+          "$ref": "#/$defs/RetractOperation"
+        },
+        {
+          "$ref": "#/$defs/RestoreOperation"
+        },
+        {
+          "$ref": "#/$defs/DeleteOperation"
+        }
+      ]
+    },
+    "ObservedMemory": {
+      "type": "object",
+      "properties": {
+        "memory_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The actual version read BEFORE this atomic DraftResult. The host validates it before operations and links the Issue to the resulting committed version."
+        }
+      },
+      "required": [
+        "memory_id",
+        "observed_version"
+      ],
+      "additionalProperties": false
+    },
+    "IssueProposal": {
+      "type": "object",
+      "properties": {
+        "issue_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "affected": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ObservedMemory"
+          },
+          "minItems": 0
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "issue_key",
+        "question",
+        "context",
+        "affected",
+        "source_refs"
+      ],
+      "additionalProperties": false
+    },
+    "ReviewResponse": {
+      "type": "object",
+      "properties": {
+        "finding_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "disposition": {
+          "enum": [
+            "adopted",
+            "modified",
+            "not_adopted"
+          ]
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "finding_index",
+        "disposition",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "DraftResult": {
+      "type": "object",
+      "properties": {
+        "audit_completion": {
+          "enum": [
+            "complete",
+            "partial"
+          ]
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryOperation"
+          },
+          "minItems": 0
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IssueProposal"
+          },
+          "minItems": 0
+        },
+        "review_responses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReviewResponse"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "audit_completion",
+        "explanation",
+        "operations",
+        "issues"
+      ],
+      "additionalProperties": false
+    },
+    "TrustedExecutionContext": {
+      "type": "object",
+      "properties": {
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actor": {
+          "enum": [
+            "main_agent",
+            "g2_worker",
+            "dreamer",
+            "memory_ui",
+            "system"
+          ]
+        },
+        "channel": {
+          "enum": [
+            "G1",
+            "G2",
+            "DREAMING",
+            "MEMORY_UI"
+          ]
+        },
+        "initiated_by": {
+          "enum": [
+            "model",
+            "user"
+          ]
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "user_intent_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "delete_authorization_ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "workspace_id",
+        "actor",
+        "channel",
+        "initiated_by"
+      ],
+      "additionalProperties": false
+    },
+    "ChangeSet": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "context": {
+          "$ref": "#/$defs/TrustedExecutionContext"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryOperation"
+          },
+          "minItems": 1
+        },
+        "audit_artifact_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "request_id",
+        "context",
+        "operations"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "context": {
+                "properties": {
+                  "channel": {
+                    "enum": [
+                      "G2",
+                      "DREAMING"
+                    ]
+                  }
+                },
+                "required": [
+                  "channel"
+                ]
+              }
+            },
+            "required": [
+              "context"
+            ]
+          },
+          "then": {
+            "properties": {
+              "operations": {
+                "items": {
+                  "not": {
+                    "properties": {
+                      "op": {
+                        "const": "DELETE"
+                      }
+                    },
+                    "required": [
+                      "op"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ErrorInfo": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            "INVALID_PROPOSAL",
+            "PERMISSION_DENIED",
+            "DELETE_NOT_AUTHORIZED",
+            "VERSION_CONFLICT",
+            "NOT_FOUND",
+            "NONCURRENT",
+            "IDEMPOTENCY_CONFLICT",
+            "SOURCE_UNAVAILABLE",
+            "TASK_NOT_ACCEPTED",
+            "PROJECTION_UNAVAILABLE",
+            "INDEX_CAPACITY",
+            "REVIEW_UNAVAILABLE",
+            "CLEANUP_INCOMPLETE",
+            "INTERNAL_FAILURE"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "OperationResult": {
+      "type": "object",
+      "properties": {
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation": {
+          "enum": [
+            "CREATE",
+            "UPDATE",
+            "ARCHIVE",
+            "RETRACT",
+            "RESTORE",
+            "DELETE"
+          ]
+        },
+        "memory_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "before_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "after_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "applied",
+            "unchanged",
+            "not_applied"
+          ]
+        },
+        "replacement_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "operation_key",
+        "operation",
+        "memory_id",
+        "before_version",
+        "after_version",
+        "outcome"
+      ],
+      "additionalProperties": false
+    },
+    "CommitReceipt": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "committed",
+            "no_change",
+            "rejected",
+            "failed"
+          ]
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OperationResult"
+          },
+          "minItems": 0
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ErrorInfo"
+          },
+          "minItems": 0
+        },
+        "cleanup_status": {
+          "enum": [
+            "not_applicable",
+            "pending",
+            "complete",
+            "incomplete"
+          ]
+        },
+        "scope_statement": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "request_id",
+        "status",
+        "workspace_id",
+        "results",
+        "errors"
+      ],
+      "additionalProperties": false
+    },
+    "G2Request": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "focus": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "AuditWindow": {
+      "type": "object",
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_exclusive": {
+          "type": "string",
+          "minLength": 1
+        },
+        "end_inclusive": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "session_id",
+        "start_exclusive",
+        "end_inclusive"
+      ],
+      "additionalProperties": false
+    },
+    "JobReceipt": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "running",
+            "completed",
+            "failed",
+            "cancelled",
+            "rejected"
+          ]
+        },
+        "window": {
+          "$ref": "#/$defs/AuditWindow"
+        },
+        "outcome": {
+          "enum": [
+            "committed",
+            "no_change",
+            "issues_recorded"
+          ]
+        },
+        "error": {
+          "$ref": "#/$defs/ErrorInfo"
+        },
+        "related_request_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "job_id",
+        "status"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "accepted",
+                  "running",
+                  "completed"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "window"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "completed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "outcome"
+            ]
+          }
+        }
+      ]
+    },
+    "ReadRequest": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "include_noncurrent": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "additionalProperties": false
+    },
+    "FoundReadResult": {
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "const": "found"
+        },
+        "record": {
+          "$ref": "#/$defs/MemoryRecord"
+        },
+        "markdown": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issue_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "outcome",
+        "record",
+        "markdown"
+      ],
+      "additionalProperties": false
+    },
+    "StatusReadResult": {
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "enum": [
+            "archived",
+            "retracted",
+            "deleted",
+            "not_found",
+            "permission_denied",
+            "unavailable"
+          ]
+        },
+        "memory_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replacement_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "issue_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "outcome",
+        "memory_id",
+        "message"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "archived",
+                  "retracted"
+                ]
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "version"
+            ]
+          }
+        }
+      ]
+    },
+    "ReadResult": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FoundReadResult"
+        },
+        {
+          "$ref": "#/$defs/StatusReadResult"
+        }
+      ]
+    },
+    "BrowseRequest": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "enum": [
+            "stable",
+            "active"
+          ]
+        },
+        "statuses": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "current",
+              "archived",
+              "retracted"
+            ]
+          },
+          "minItems": 1
+        },
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "IndexEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "enum": [
+            "stable",
+            "active"
+          ]
+        },
+        "status": {
+          "enum": [
+            "current",
+            "archived",
+            "retracted"
+          ]
+        },
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "index_hint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issue_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "title",
+        "category",
+        "status",
+        "group",
+        "index_hint"
+      ],
+      "additionalProperties": false
+    },
+    "BrowseResult": {
+      "type": "object",
+      "properties": {
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "snapshot_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IndexEntry"
+          },
+          "minItems": 0
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "workspace_id",
+        "snapshot_ref",
+        "entries",
+        "next_cursor"
+      ],
+      "additionalProperties": false
+    },
+    "ReviewFinding": {
+      "type": "object",
+      "properties": {
+        "operation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": [
+            "note",
+            "warning",
+            "high"
+          ]
+        },
+        "problem": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 0
+        },
+        "suggestion": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "operation_key",
+        "severity",
+        "problem",
+        "evidence",
+        "suggestion"
+      ],
+      "additionalProperties": false
+    },
+    "ReviewAdvice": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReviewFinding"
+          },
+          "minItems": 0
+        },
+        "checked_sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 0
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "candidate_id",
+        "findings",
+        "checked_sources",
+        "limitations"
+      ],
+      "additionalProperties": false
+    },
+    "MemoryNotice": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "updated",
+            "archived",
+            "retracted",
+            "deleted",
+            "replaced",
+            "needs_resolution"
+          ]
+        },
+        "memory_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_markdown": {
+          "type": "string",
+          "minLength": 1
+        },
+        "replacement_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "issue_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "kind",
+        "memory_id",
+        "message"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "updated"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "from_version",
+              "to_version",
+              "content_markdown"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "replaced"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "replacement_refs"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "needs_resolution"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "issue_refs"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "not": {
+                  "const": "updated"
+                }
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "content_markdown"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "archived",
+                  "retracted",
+                  "replaced"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "to_version"
+            ]
+          }
+        }
+      ]
+    },
+    "ReadyTurnBundle": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "const": "ready"
+        },
+        "bundle_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "snapshot_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "index_markdown": {
+          "type": "string"
+        },
+        "index_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "index_changed": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryNotice"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "state",
+        "bundle_id",
+        "workspace_id",
+        "session_id",
+        "turn_id",
+        "snapshot_ref",
+        "workspace_revision",
+        "index_markdown",
+        "index_hash",
+        "index_changed",
+        "notifications"
+      ],
+      "additionalProperties": false
+    },
+    "UnavailableTurnBundle": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "const": "unavailable"
+        },
+        "bundle_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "error": {
+          "$ref": "#/$defs/ErrorInfo"
+        }
+      },
+      "required": [
+        "state",
+        "bundle_id",
+        "workspace_id",
+        "session_id",
+        "turn_id",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "TurnMemoryBundle": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ReadyTurnBundle"
+        },
+        {
+          "$ref": "#/$defs/UnavailableTurnBundle"
+        }
+      ]
+    },
+    "AuditEvent": {
+      "type": "object",
+      "properties": {
+        "event_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "workspace_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "channel": {
+          "enum": [
+            "G1",
+            "G2",
+            "DREAMING",
+            "MEMORY_UI",
+            "RECALL",
+            "SYSTEM"
+          ]
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "turn_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0
+        },
+        "prompt_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      },
+      "required": [
+        "event_id",
+        "event_type",
+        "occurred_at",
+        "workspace_id",
+        "channel"
+      ],
+      "additionalProperties": false
+    },
+    "SourceRemoval": {
+      "type": "object",
+      "properties": {
+        "source_ref": {
+          "$ref": "#/$defs/SourceRef"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "source_ref",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "description": "Explicitly remove an existing provenance reference at the operation expected_version; explain why it no longer applies. This is not deletion of the original source."
+    }
+  }
+}

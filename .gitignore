@@ -1,0 +1,12 @@
+node_modules/
+.pnpm-store/
+artifacts/
+coverage/
+*.tgz
+*.log
+*.sqlite*
+*.jsonl*
+.env
+.env.*
+.credentials.*
+.DS_Store
