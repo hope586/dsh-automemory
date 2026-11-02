@@ -24,11 +24,11 @@ Old conversations require explicit inclusion. Removing a workspace retains its m
 
 ## Retention and explicit clearing
 
-The default audit retention is30 days and can be configured. It governs eligible audit/difference material and owned native logs; **it does not expire formal memory**. In-flight jobs retain material needed for recovery. Retention is applied while the plugin runs, not by an independent always-on service.
+The default audit retention is 30 days and can be configured. It governs eligible audit/difference material and owned native logs; **it does not expire formal memory**. In-flight jobs retain material needed for recovery. Retention is applied while the plugin runs, not by an independent always-on service.
 
 Explicit clearing first checks real current user intent and the relevant confirmation/permission flow. It removes formal target content and cleans related plugin-controlled audit copies, queued artifacts, snapshots, evidence caches and owned native sessions. Cross-host epochs and revocation metadata prevent a stale request from restoring cleared content. Minimal identifiers/hashes may remain for idempotency and cleanup tracking.
 
-Cleanup can remain incomplete while a native writer is active or when the storage layout cannot be safely verified. The receipt reports that state and later attempts retry; deleting the formal entry alone is not reported as complete erasure. The implemented adapter is verified for the DSH0.2.1-rc.5 local v4 JSONL/zstd backend only.
+Cleanup can remain incomplete while a native writer is active or when the storage layout cannot be safely verified. The receipt reports that state and later attempts retry; deleting the formal entry alone is not reported as complete erasure. The implemented adapter is verified for the DSH 0.2.1-rc.5 local v4 JSONL/zstd backend only.
 
 Clearing plugin-owned data does **not** erase the user's original DSH conversations, provider records, external backups, exported reports or copies committed elsewhere. It cannot guarantee physical erasure from SSD snapshots or RAM. Deleting USER.md through the plugin clears related plugin-controlled profile copies and background/management snapshots, while retaining formal project memory.
 

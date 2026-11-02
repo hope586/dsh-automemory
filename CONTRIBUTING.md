@@ -1,6 +1,6 @@
 # Contributing
 
-Use a supported Node version, pnpm10.33.0 and the committed lockfile. The exact tested baseline is in [compatibility](docs/compatibility.md).
+Use a supported Node version, pnpm 10.33.0 and the committed lockfile. The exact tested baseline is in [compatibility](docs/compatibility.md).
 
 ```bash
 pnpm install --frozen-lockfile --ignore-scripts

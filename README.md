@@ -28,7 +28,7 @@ shasum -a 256 -c SHA256SUMS
 dsh plugin --profile web add ./dsh-automemory-0.3.5.tgz
 ```
 
-在 `$DSH_HOME/profiles/web/package.json` 的 `dsh.profile.bundles` 数组中加入 `dsh-automemory`，保留已有条目，然后重启该 profile。Desktop 独立使用自己的 profile；如其名称为 `desktop`，将命令与配置路径中的 `web` 换为 `desktop`。也可使用宿主插件管理界面安装并启用此 bundle。
+在已验证的宿主中，这条命令会自动将 `dsh-automemory` 加入 `$DSH_HOME/profiles/web/package.json` 的 `dsh.profile.bundles`。核对该条目存在并保留其他 bundle，随后重启该 profile；不要重复添加。Desktop 独立使用自己的 profile；如其名称为 `desktop`，将命令中的 `web` 换为 `desktop`。也可使用宿主插件管理界面安装并启用此 bundle。
 
 固定版本的 GitHub 安装方式：
 

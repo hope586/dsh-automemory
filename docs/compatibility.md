@@ -8,10 +8,10 @@
 | Node.js | 22.22.2 |
 | Platform | macOS |
 | User interface | Web and Desktop |
-| Optional context auditing | Context Lite0.3.1, commit `664de395479f2ec43b2591abb0dcb699d6a92b02` |
+| Optional context auditing | Context Lite 0.3.1, commit `664de395479f2ec43b2591abb0dcb699d6a92b02` |
 | Real models observed | Z.ai GLM-5.3 / GLM-5.3-Flash; limited DeepSeek Flash checks |
 
-Package ranges permit compatible updates; they are not a promise that every0.2.x host, later Node version, model or operating system has been tested. Linux/Windows and long-duration multi-host stress are not claimed as accepted platforms by this release. Check host release notes before upgrading and repeat the relevant tests.
+Package ranges permit compatible updates; they are not a promise that every 0.2.x host, later Node version, model or operating system has been tested. Linux/Windows and long-duration multi-host stress are not claimed as accepted platforms by this release. Check host release notes before upgrading and repeat the relevant tests.
 
 ## Integration seams
 

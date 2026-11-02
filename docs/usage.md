@@ -30,7 +30,7 @@
 
 Current memory is the user-facing view; activity records actual changes. A model's “remembered” sentence is not a commit receipt. “Accepted” means queued or accepted for processing; “committed” establishes a formal change. “Cleanup incomplete” means some owned copies still require cleanup even if the formal entry is gone.
 
-For an unexpected answer, compare the original user requirement, the saved entry/version, the native request context, the actual `memory_read` result and the answer/action. Optional Context Lite can inspect native admission and replacements. Version0.3.1 adds pre-step provenance; older releases can show the message while lacking the original caller. Missing caller evidence is not evidence of absent memory.
+For an unexpected answer, compare the original user requirement, the saved entry/version, the native request context, the actual `memory_read` result and the answer/action. Optional Context Lite can inspect native admission and replacements. Version 0.3.1 adds pre-step provenance; older releases can show the message while lacking the original caller. Missing caller evidence is not evidence of absent memory.
 
 ## Upgrade and uninstall
 
