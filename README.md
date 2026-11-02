@@ -28,7 +28,9 @@ shasum -a 256 -c SHA256SUMS
 dsh plugin --profile web add ./dsh-automemory-0.3.5.tgz
 ```
 
-在已验证的宿主中，这条命令会自动将 `dsh-automemory` 加入 `$DSH_HOME/profiles/web/package.json` 的 `dsh.profile.bundles`。核对该条目存在并保留其他 bundle，随后重启该 profile；不要重复添加。Desktop 独立使用自己的 profile；如其名称为 `desktop`，将命令中的 `web` 换为 `desktop`。也可使用宿主插件管理界面安装并启用此 bundle。
+在已验证的宿主中，这条命令会自动将 `dsh-automemory` 加入 `$DSH_HOME/profiles/web/package.json` 的 `dsh.profile.bundles`。核对该条目存在并保留其他 bundle，随后重启该 profile；不要重复添加。
+
+**Desktop 使用应用内的插件管理器。** 将发行包解压到一个空目录，在 Desktop 的“插件”中添加解压后含 `package.json` 和 `lib/` 的本地 `package` 目录，启用并按宿主提示重载。当前 DSH 明确禁止 CLI 管理 Electron 专属的 `desktop` profile；不要把上面命令的 `web` 直接改成 `desktop`。
 
 固定版本的 GitHub 安装方式：
 

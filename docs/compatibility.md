@@ -29,6 +29,8 @@ The Context Lite test installs a pinned public package and exercises its public 
 
 Distribution checks separately inspect the exact staged Git files, dependency notices, rebuilt output and extracted tarball. The package smoke test loads the archive into a fresh host harness, exercises recording/recall/management, unloads it and verifies persistence on reload. These checks do not establish long-term semantic quality.
 
+Release preparation also installed the tarball through the official Web CLI into a fresh `DSH_HOME`, checked automatic bundle registration and booted the real host on an isolated random port. The plugin created its stores and the authenticated HTTP endpoint responded normally. pnpm reported host-supplied peer dependencies as absent from the profile; native DSH resolution loaded them successfully. Desktop's reserved profile correctly rejected CLI management, so its documented installation path is the in-app local-package manager. This package check does not claim a new full Desktop GUI evaluation.
+
 ## Native UI and model observations
 
 Maintainer acceptance exercised normal workspace navigation, manager requests, return paths, history controls and shared-host state. The0.3.5 native manager completed two real DeepSeek Flash requests in one native session; a Z.ai GLM-5.3-Flash ordinary turn showed `dsh-automemory` and `agent.pre-step` in Context Lite with observed admission evidence. Original unknown provenance remained unknown. Formal memory and settings were unchanged by that read-only check.

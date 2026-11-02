@@ -28,7 +28,9 @@ shasum -a 256 -c SHA256SUMS
 dsh plugin --profile web add ./dsh-automemory-0.3.5.tgz
 ```
 
-On the verified host, this command automatically adds `dsh-automemory` to `dsh.profile.bundles` in `$DSH_HOME/profiles/web/package.json`. Check that the entry exists, preserve other bundles and restart that profile; do not add it twice. Desktop uses its own profile; replace `web` with its actual name, commonly `desktop`. The host plugin manager may also install and enable the bundle.
+On the verified host, this command automatically adds `dsh-automemory` to `dsh.profile.bundles` in `$DSH_HOME/profiles/web/package.json`. Check that the entry exists, preserve other bundles and restart that profile; do not add it twice.
+
+**Desktop uses its in-app plugin manager.** Extract the release archive into an empty directory, add the local `package` directory containing `package.json` and `lib/` through Desktop's Plugins page, enable it and reload as prompted. The current CLI explicitly refuses to manage Electron's reserved `desktop` profile; do not simply replace `web` with `desktop` in the command above.
 
 Pinned GitHub installation:
 

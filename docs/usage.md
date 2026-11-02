@@ -36,4 +36,6 @@ For an unexpected answer, compare the original user requirement, the saved entry
 
 Back up the `DSH_HOME` used by the relevant host. Install the new archive into that profile, preserve its bundle entry and restart. Do not assume updating Web also updates Desktop. Two hosts sharing memory should use the same compatible plugin version.
 
+Use `dsh plugin --profile web add ...` for Web. Desktop's reserved profile is managed by the Electron app, not the CLI: extract the archive and add its local package directory through the in-app plugin manager. The CLI's refusal to manage `desktop` is expected host behavior, not an AutoMemory installation error.
+
 Disable the plugin through the host manager, or remove its profile bundle entry and package, then restart. Data remains. Use explicit memory/profile clearing when you want plugin-controlled data removed, and inspect cleanup receipts. Do not delete a live database while another host is writing it. See [privacy](privacy.md) for the scope of erasure.
