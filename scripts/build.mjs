@@ -6,7 +6,7 @@ await mkdir('lib', { recursive: true });
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(x => x.isDirectory() ? walk(dir + '/' + x.name) : [dir + '/' + x.name]);
 const fingerprint = createHash('sha256').update(version);
-for (const file of ['package.json', ...walk('src'), ...walk('prompts'), ...walk('schemas')].sort()) fingerprint.update(file).update(readFileSync(file));
+for (const file of ['package.json', 'pnpm-lock.yaml', 'scripts/build.mjs', ...walk('src'), ...walk('prompts'), ...walk('schemas')].sort()) fingerprint.update(file).update(readFileSync(file));
 const buildId = fingerprint.digest('hex').slice(0, 16);
 await build({ entryPoints: ['src/index.js'], outfile: 'lib/index.js', bundle: true, platform: 'node', target: 'node22', format: 'esm', external: ['@deepseek-ai/*'], loader: { '.md': 'text' }, legalComments: 'inline', define: { __DAM_VERSION__: JSON.stringify(version), __DAM_BUILD__: JSON.stringify(buildId) } });
 const css = await readFile('src/style.css', 'utf8');
