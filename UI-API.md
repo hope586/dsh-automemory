@@ -2,6 +2,8 @@
 
 The root-scoped page uses public `main` key `autoMemory` and a matching `sidebar.panellist` entry at order 15 above Workspaces. The current UI does not register a right-sidebar body or conversation-header button. React and Markdown are supplied by the host.
 
+Model settings use the native `remote.session.modelCatalog()` endpoint also used by conversation selectors. The host `Menu` renders provider groups and advertised reasoning levels. Selection stages a complete `{provider,model,reasoningEffort?}` in the plugin settings form, while G2 may stage `null` to follow its originating session. Catalog reads create no Session and never change an ordinary conversation or the host default model. Host reset, adapter, settings and credential-reference events invalidate choices; saved routes outside the current catalog remain visible and unchanged until the user selects a replacement. The legacy `models` field below remains for API compatibility and no longer drives this selector.
+
 All requests use same-origin credentials and private/no-store responses. The host enforces normal connection authentication, Origin checks and trusted workspace mapping. Client-provided paths, focus labels and optimistic UI state never grant authority.
 
 ## Workspace and global reads

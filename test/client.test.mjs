@@ -116,6 +116,8 @@ test('global page and workspace-above navigation use public slots and dispose cl
   const ctx = {
     locale: { bind: () => translator('en'), register: (namespace, value) => { dictionaries.push({ namespace, value }); return () => releases++; } },
     effect: fn => { const disposer = fn(); effects.push(disposer); return disposer; },
+    on: () => () => {},
+    remote: { session: { modelCatalog: async () => { throw Error('Catalog should load only when settings are opened'); } }, $on: () => () => {} },
     uiWorkspace: { openSession() {} },
     slots: { inject: (_name, fn) => fn(), register: (definition, component) => { slots.push({ definition, component }); return () => releases++; } },
   };

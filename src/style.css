@@ -290,6 +290,16 @@ button.dam-issue-banner:hover{background:var(--dam-bg)}
 .dam-profile-history{margin-top:30px}
 .dam-model-row{display:grid;grid-template-columns:minmax(160px,.75fr) minmax(0,1.25fr);align-items:start;gap:20px;padding-top:18px;margin-top:18px;border-top:1px solid var(--dam-border)}
 .dam-model-row strong{font-weight:500}
+.dam-model-picker{min-width:0;display:flex;flex-direction:column;gap:8px}
+.dam-model-menu{display:block;width:100%;min-width:0}
+.dam-model-trigger{width:100%;justify-content:space-between;text-align:left;padding:10px 12px;min-height:44px}
+.dam-model-trigger>span{display:flex;flex-direction:column;min-width:0;gap:2px}
+.dam-model-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dam-model-trigger>svg{flex:none;color:var(--dam-muted)}
+.dam-model-effort{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
+.dam-model-effort>.dam-hint{margin:0!important}
+.dam-model-catalog-notice{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--dam-secondary);font-size:12px}
+.dam-model-catalog-notice>.dam-button{flex:none;white-space:nowrap}
 .dam-advanced>summary{font-size:13px;font-weight:500}
 .dam-advanced[open]>.dam-fieldset{margin-top:10px}
 .dam-session-choice:not(.dam-card){padding:15px 16px;border:1px solid var(--dam-border);border-radius:10px}

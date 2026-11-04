@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.6 — 2026-11-04
+
+- Replace separate provider/model text fields with a provider-grouped selector backed by the same native model catalog as conversations, using the host Menu component.
+- Select the exact provider, model and supported reasoning effort together; G2 has an explicit “Follow originating session” option.
+- Refresh model choices when host configuration changes; expose catalog failures without dropping saved routes from another host.
+
 ## 0.3.5 — 2026-11-02
 
 First public MIT release of dsh-automemory.

@@ -1,8 +1,9 @@
 import { zh, en, errorText } from './i18n.js';
+import { createNativeModelCatalog, ModelPicker } from './model-picker.js';
 
 const { createElement: h, useState, useEffect, useRef, useCallback } = React;
 const NS = 'autoMemory';
-const inject = ['slots', 'locale', 'layout', 'uiWorkspace', 'sessions', 'workspaces'];
+const inject = ['slots', 'locale', 'layout', 'uiWorkspace', 'sessions', 'workspaces', 'remote', 'remote.session'];
 const endpoint = '/api/dsh-automemory';
 const failure = (code, message, params) => Object.assign(new Error(message || code), { code, params });
 let serviceAvailable = true;
@@ -246,20 +247,21 @@ function PastSessions({ data, nativeSessions, act, busy, t, viewState = {}, onVi
     !groups.selectable.length && !groups.covered.length ? h(Empty, { icon: 'chat', title: filter ? t('noMatchingSessions') : t('emptySessions') }) : null,
     groups.sessions.some(session => !session.included) ? h('div', { className: 'dam-settings-actions' }, h('span', { className: 'dam-muted' }, t('selectedCount', { count: selectedIds.length })), h('button', { className: 'dam-button primary', disabled: busy || !selectedIds.length || data.capabilities?.includeSessions === false, onClick: () => includeHistorySelection({ sessionIds: selectedIds, act, isCurrent: () => mounted.current, onViewStateChange }) }, t('includeSelected', { count: selectedIds.length }))) : null);
 }
-function Settings({ data, act, busy, t }) {
+function Settings({ data, act, busy, t, modelCatalog }) {
   const [form, setForm] = useState(data.settings || {}), [dirty, setDirty] = useState(false), [error, setError] = useState(null);
+  const catalog = React.useSyncExternalStore(modelCatalog.subscribe, modelCatalog.getSnapshot, modelCatalog.getSnapshot);
+  useEffect(() => { void modelCatalog.load().catch(() => {}); }, [modelCatalog]);
   useEffect(() => { if (!dirty) setForm(data.settings || {}); }, [data.settings, dirty]);
   const change = (key, value) => { setDirty(true); setError(null); setForm(old => ({ ...old, [key]: value })); };
-  const modelChange = (role, key, value) => change('models', { ...form.models, [role]: { ...form.models?.[role], [key]: value } });
-  const modelFields = role => ['provider', 'model'].map(key => {
-    const choices = [...new Set((data.models || []).filter(m => key === 'provider' || !form.models?.[role]?.provider || m.provider === form.models[role].provider).map(m => m[key]))];
-    return h('label', { className: 'dam-field', key }, h('span', null, t(key)), h('input', { value: form.models?.[role]?.[key] || '', required: role !== 'g2', list: 'dam-' + role + '-' + key, onChange: e => modelChange(role, key, e.target.value), autoComplete: 'off' }), h('datalist', { id: 'dam-' + role + '-' + key }, ...choices.map(value => h('option', { key: value, value }))));
-  });
+  const modelChange = (role, value) => change('models', { ...form.models, [role]: value });
   const number = (key, min, max, budget = false) => h('label', { className: 'dam-field', key }, h('span', null, t(key)), h('input', { type: 'number', min, max, required: true, value: (budget ? form.budget?.[key] : form[key]) ?? '', onChange: e => budget ? change('budget', { ...form.budget, [key]: e.target.value }) : change(key, e.target.value) }));
   return h('form', { className: 'dam-section dam-secondary-panel dam-settings', onSubmit: async e => { e.preventDefault(); setError(null); try { const result = await act('settings-save', { settings: normaliseSettings(form) }); if (result) setDirty(false); } catch (err) { if (err.params?.field) err.params.field = t(err.params.field); setError(err); } } },
     h('div', { className: 'dam-section-head' }, h('div', null, h('h2', null, t('settings')), h('p', { className: 'dam-hint' }, t('settingsIntro')))),
     h('fieldset', { className: 'dam-fieldset', disabled: busy }, h('legend', null, t('generalSettings')), h('div', { className: 'dam-fields' }, h('div', null, number('dreamIntervalHours', 24, 8760), h('p', { className: 'dam-hint' }, t('intervalHint'))), h('div', null, number('auditRetentionDays', 1, 3650), h('p', { className: 'dam-hint' }, t('retentionHint'))))),
-    h('fieldset', { className: 'dam-fieldset', disabled: busy }, h('legend', null, t('models')), h('p', { className: 'dam-hint' }, t('modelsHint')), ...['manager', 'g2', 'dreamer', 'reviewer'].map(role => h('div', { key: role, className: 'dam-model-row' }, h('div', null, h('strong', null, t(role)), h('p', { className: 'dam-hint' }, t(role === 'g2' ? 'followSession' : 'chooseModel'))), h('div', { className: 'dam-fields' }, ...modelFields(role))))),
+    h('fieldset', { className: 'dam-fieldset', disabled: busy }, h('legend', null, t('models')), h('p', { className: 'dam-hint' }, t('modelsHint')),
+      catalog.status === 'loading' ? h('p', { className: 'dam-hint', role: 'status' }, t('loadingModels')) : null,
+      catalog.status === 'error' || catalog.value?.failures?.length ? h('div', { className: 'dam-model-catalog-notice', role: 'status' }, h('span', null, t(catalog.status === 'error' ? 'modelCatalogFailed' : 'modelCatalogPartial', { providers: catalog.value?.failures.map(item => item.name).join('、') })), h('button', { type: 'button', className: 'dam-button subtle', disabled: busy, onClick: () => { void modelCatalog.refresh().catch(() => {}); } }, t('retry'))) : null,
+      ...['manager', 'g2', 'dreamer', 'reviewer'].map(role => h('div', { key: role, className: 'dam-model-row' }, h('div', null, h('strong', null, t(role)), h('p', { className: 'dam-hint' }, t(role === 'g2' ? 'followSessionHint' : 'chooseModel'))), h(ModelPicker, { role, value: form.models?.[role], catalog: catalog.value, onChange: value => modelChange(role, value), disabled: busy || !catalog.value, t })))),
     h('details', { className: 'dam-disclosure dam-advanced' }, h('summary', null, t('advanced')), h('fieldset', { className: 'dam-fieldset', disabled: busy }, h('legend', null, t('budgets')), h('p', { className: 'dam-hint' }, t('budgetEstimateHint')), h('div', { className: 'dam-fields' }, number('maxInputTokens', 1024, 2000000, true), number('maxOutputTokens', 128, 32768, true), number('maxSteps', 1, 32, true), number('maxDailyTokens', 1024, 100000000, true)))),
     error ? h('p', { className: 'dam-error', role: 'alert' }, errorText(error, t)) : null,
     h('div', { className: 'dam-settings-actions' }, h('button', { type: 'submit', className: 'dam-button primary', disabled: busy || !dirty }, t('save'))));
@@ -492,7 +494,7 @@ function ProjectPreferences({ project, t, onCatalogRefresh, onContentReady }) {
     h('div', { className: 'dam-settings-control-list' },
       ...[['enabled', 'project-toggle', 'useProjectMemory', 'useProjectMemoryHint'], ['automaticDream', 'project-dream-toggle', 'automaticConsolidation', 'automaticConsolidationHint']].map(([key, action, title, hint]) => h('label', { className: 'dam-setting-row', key }, h('span', null, h('strong', null, t(title)), h('span', { className: 'dam-hint' }, t(hint))), h('input', { type: 'checkbox', role: 'switch', checked: data.workspace?.[key] !== false, disabled: busy || key === 'automaticDream' && project.detached, onChange: async e => { const result = await act(action, { enabled: e.target.checked }); if (result) onCatalogRefresh(); } }))), project.detached ? h('p', { className: 'dam-hint' }, t('retainedHint')) : null));
 }
-function SettingsPage({ catalog, nativeSessions, t, onBack, backLabel, onOpenProject, onCatalogRefresh, viewState = {}, onViewStateChange, onContentReady }) {
+function SettingsPage({ catalog, nativeSessions, modelCatalog, t, onBack, backLabel, onOpenProject, onCatalogRefresh, viewState = {}, onViewStateChange, onContentReady }) {
   const { data, error, busy, act, refresh, receipt, clearReceipt } = useMemoryState(null);
   const section = viewState.section || 'general', projectKey = viewState.projectKey || '';
   const setSection = value => onViewStateChange(current => ({ ...current, section: value }));
@@ -503,7 +505,7 @@ function SettingsPage({ catalog, nativeSessions, t, onBack, backLabel, onOpenPro
   return h(React.Fragment, null, h('header', { className: 'dam-workspace-header' }, h('div', null, h('button', { className: 'dam-button subtle dam-breadcrumb', onClick: onBack }, h(Icon, { name: 'arrow', size: 15 }), backLabel || t('backToWorkspaces')), h('h1', null, t('settings')))),
     h('div', { className: 'dam-settings-layout' }, h('nav', { className: 'dam-settings-nav', 'aria-label': t('settings') }, ...['general', 'workspaces', 'profile', 'archive'].map(key => h('button', { key, className: 'dam-button', 'aria-current': section === key ? 'page' : undefined, onClick: () => setSection(key) }, t(({ general: 'modelsAndConsolidation', workspaces: 'workspacePreferences', profile: 'profileControls', archive: 'archiveAndHistory' })[key])))),
       h('div', { className: 'dam-settings-main' }, h(Receipt, { value: receipt, onClose: clearReceipt, t }), h(ErrorNotice, { error, retry: refresh, t }), !data && !error ? h(Loading, { t }) : null,
-        data && section === 'general' ? h(Settings, { data, act, busy, t }) : null,
+        data && section === 'general' ? h(Settings, { data, act, busy, t, modelCatalog }) : null,
         data && section === 'profile' ? h('section', { className: 'dam-section' }, h('h2', null, t('profileControls')), h('p', { className: 'dam-hint' }, t('profileIntro')), ...[['enabled', 'profileEnabled'], ['autoWrite', 'autoWrite']].map(([key, label]) => h('label', { className: 'dam-setting-row', key }, h('strong', null, t(label)), h('input', { type: 'checkbox', role: 'switch', checked: data.userProfile?.[key] !== false, disabled: busy, onChange: e => act('user-profile-toggle', { [key]: e.target.checked }) })))) : null,
         section === 'workspaces' ? h('section', { className: 'dam-section' }, h('h2', null, t('workspacePreferences')), all.length ? h(React.Fragment, null, h('label', { className: 'dam-field' }, h('span', null, t('chooseProject')), h('select', { value: project?.key || '', onChange: e => setProjectKey(e.target.value) }, ...all.map(p => h('option', { key: p.key, value: p.key, disabled: !p.canBrowse }, p.name)))), project?.id ? h(ProjectPreferences, { key: project.key, project, t, onCatalogRefresh, onContentReady }) : null) : h(Empty, { title: t('noWorkspaces') })) : null,
         section === 'archive' ? h('section', { className: 'dam-section' }, h('h2', null, t('archiveAndHistory')), h('p', { className: 'dam-hint' }, t('archiveHint')), h('section', { className: 'dam-settings-archive-section' }, h('h3', null, t('retainedWorkspaces')), (catalog.retainedProjects || []).length ? catalog.retainedProjects.map(p => h('button', { key: p.key, className: 'dam-archive-row', onClick: () => onOpenProject(p, { projectKey: project?.key || '' }) }, h(Icon, { name: 'folder', size: 18 }), h('span', null, h('strong', null, p.name), h('span', { className: 'dam-muted' }, t('retainedRead'))), h('span', { 'aria-hidden': true }, '›'))) : h('p', { className: 'dam-hint' }, t('noRetainedWorkspaces'))), h('section', { className: 'dam-settings-archive-section' }, h('h3', null, t('includeHistory')), h('p', { className: 'dam-hint' }, t('includeHistoryHint')), all.length ? h(React.Fragment, null, h('label', { className: 'dam-field' }, h('span', null, t('chooseProject')), h('select', { value: project?.key || '', onChange: e => setProjectKey(e.target.value) }, ...all.map(p => h('option', { key: p.key, value: p.key, disabled: !p.canBrowse }, p.name)))), project?.id ? h(HistoryPreferences, { key: project.key, project, nativeSessions, t, onContentReady, viewState: viewState.history?.[project.key] || {}, onViewStateChange: history => onViewStateChange(current => ({ ...current, history: { ...current.history, [project.key]: typeof history === 'function' ? history(current.history?.[project.key] || {}) : history } })) }) : null) : null)) : null)));
@@ -543,7 +545,7 @@ function returnLabel(route, t) {
   if (route.returnTo?.page === 'profile') return t('backToProfile');
   return t('backToWorkspaces');
 }
-function Page({ t, useSessions, useWorkspaces }) {
+function Page({ t, useSessions, useWorkspaces, modelCatalog }) {
   const nativeSessions = useSessions ? useSessions(s => s.byId) : {};
   const nativeSnapshot = useWorkspaces ? useWorkspaces(s => s) : null;
   const signature = JSON.stringify(nativeSnapshot?.items?.map(w => [w.workspaceId, w.title, w.path, w.sessionIds]));
@@ -587,7 +589,7 @@ function Page({ t, useSessions, useWorkspaces }) {
   // A removed/replaced registry row unmounts its manager; never reuse its context.
   useEffect(() => { if (loaded && route.page === 'workspace' && !project) back(); }, [loaded, route.page, route.key, !!project]);
   return h('div', { ref: pageElement, className: 'dam-root dam-page dam-workflow-page' }, h('style', null, STYLE), h('div', { className: 'dam-shell' },
-    !available ? h(Empty, { title: t('unavailable') }) : route.page === 'workspace' && project ? h(WorkspacePage, { key: route.visit + ':' + project.key, project, t, onBack: back, backLabel: returnLabel(route, t), onSettings: settings, onContentReady: () => setReadyVisit(route.visit) }) : route.page === 'profile' ? h(WorkspacePage, { key: 'user:' + route.visit, userScope: true, t, onBack: back, backLabel: returnLabel(route, t), onSettings: settings, onContentReady: () => setReadyVisit(route.visit) }) : route.page === 'settings' ? h(SettingsPage, { key: 'settings:' + route.visit, catalog: effectiveCatalog, nativeSessions, t, onBack: back, backLabel: returnLabel(route, t), onOpenProject: enter, onCatalogRefresh: refresh, viewState: route.settingsState || {}, onContentReady: () => setReadyVisit(route.visit), onViewStateChange: value => navigate({ type: 'settings-state', value, expectedVisit: route.visit }) }) : h(React.Fragment, null,
+    !available ? h(Empty, { title: t('unavailable') }) : route.page === 'workspace' && project ? h(WorkspacePage, { key: route.visit + ':' + project.key, project, t, onBack: back, backLabel: returnLabel(route, t), onSettings: settings, onContentReady: () => setReadyVisit(route.visit) }) : route.page === 'profile' ? h(WorkspacePage, { key: 'user:' + route.visit, userScope: true, t, onBack: back, backLabel: returnLabel(route, t), onSettings: settings, onContentReady: () => setReadyVisit(route.visit) }) : route.page === 'settings' ? h(SettingsPage, { key: 'settings:' + route.visit, catalog: effectiveCatalog, nativeSessions, modelCatalog, t, onBack: back, backLabel: returnLabel(route, t), onOpenProject: enter, onCatalogRefresh: refresh, viewState: route.settingsState || {}, onContentReady: () => setReadyVisit(route.visit), onViewStateChange: value => navigate({ type: 'settings-state', value, expectedVisit: route.visit }) }) : h(React.Fragment, null,
       h('header', { className: 'dam-page-header' }, h('div', { className: 'dam-heading' }, h('div', { className: 'dam-title' }, h(Icon, { size: 25 }), h('h1', null, t('pageTitle'))), h('p', { className: 'dam-subtitle' }, t('homeSubtitle'))), h('button', { className: 'dam-button', onClick: settings }, h(Icon, { name: 'settings', size: 16 }), t('settings'))),
       h(ErrorNotice, { error, retry: refresh, t }), !loaded ? h(Loading, { t }) : h('section', { className: 'dam-home-workspaces', 'aria-label': t('workspaces') }, h('div', { className: 'dam-section-head' }, h('h2', null, t('workspaces')), h('span', { className: 'dam-muted' }, t('projectCount', { count: projects.length }))), projects.length ? h('div', { className: 'dam-workspace-grid' }, ...projects.map(p => h('button', { className: 'dam-workspace-card', key: p.key, disabled: !p.canBrowse, onClick: () => enter(p), 'aria-label': t('openWorkspaceMemory', { name: p.name }) }, h('span', { className: 'dam-workspace-card-icon' }, h(Icon, { name: 'folder', size: 23 })), h('h3', null, p.name), h('p', null, previewText(p.summary) || (p.enabled === false ? t('memoryPausedReadable') : t('workspaceCardHint'))), h('span', { className: 'dam-workspace-card-open' }, t('openMemory'), ' →')))) : h(Empty, { title: t('noWorkspaces'), description: t('noWorkspacesHint') })),
       h('button', { className: 'dam-global-card', onClick: () => navigate({ type: 'profile' }) }, h('span', { className: 'dam-workspace-card-icon' }, h(Icon, { name: 'globe', size: 23 })), h('span', null, h('strong', null, t('profileTitle')), h('span', { className: 'dam-muted' }, t('profileSubtitle'))), h('span', { className: 'dam-global-open', 'aria-hidden': true }, '→')))));
@@ -611,9 +613,16 @@ export function migrateLegacyTabs(sidebar, schedule = requestAnimationFrame, can
 }
 function apply(ctx) {
   const t = ctx.locale.bind(NS);
+  const modelCatalog = createNativeModelCatalog(() => ctx.remote.session.modelCatalog());
+  ctx.effect(() => {
+    const refresh = () => { void modelCatalog.refresh().catch(() => {}); };
+    const stops = [ctx.on('connection/reset', () => { void modelCatalog.refresh(true).catch(() => {}); }),
+      ...['llm/adapters-updated', 'settings/document-updated', 'credentials/reference-updated'].map(event => ctx.remote.$on(event, refresh))];
+    return () => { stops.forEach(stop => stop()); modelCatalog.dispose(); };
+  }, 'automemory: native model catalog');
   ctx.effect(() => createAvailabilityMonitor().dispose, 'automemory: availability');
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'automemory: copy');
-  ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: NS, locale: NS, inject: () => ({ openSession: id => ctx.uiWorkspace.openSession(id) }) }, Page)), 'automemory: page');
+  ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: NS, locale: NS, inject: () => ({ modelCatalog, openSession: id => ctx.uiWorkspace.openSession(id) }) }, Page)), 'automemory: page');
   ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => {
     let release;
     const sync = () => {
