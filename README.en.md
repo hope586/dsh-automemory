@@ -2,9 +2,11 @@
 
 [中文](README.md) · [Usage](docs/usage.md) · [Data and privacy](docs/privacy.md)
 
+> Current version **0.3.7**: first public release of the native model picker (originally 0.3.6, not published separately) plus the performance and robustness fixes from the 2026-11-05 review round. See the [0.3.7 release notes](docs/RELEASE-NOTES-v0.3.7.md) and the [changelog](CHANGELOG.md).
+
 Project-scoped memory for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Carry decisions, their reasons, progress and working agreements across conversations; inspect and manage them on a dedicated memory page.
 
-Independent community plugin, MIT licensed; not affiliated with or endorsed by DeepSeek. **Version 0.3.5 is a 0.x release.** Model-driven memory is selective and can omit, overgeneralize or retain stale information. Current project files and user judgment remain necessary.
+Independent community plugin, MIT licensed; not affiliated with or endorsed by DeepSeek. **Version 0.3.7 is a 0.x release.** Model-driven memory is selective and can omit, overgeneralize or retain stale information. Current project files and user judgment remain necessary.
 
 ## Features
 
@@ -21,11 +23,11 @@ Web and Desktop share memory under the same `DSH_HOME`. Removing a workspace ret
 
 Tested baseline: **DSH 0.2.1-rc.5, Node 22.22.2, macOS, Web/Desktop**. Declared version ranges do not imply every version or operating system has been tested. DSH and pnpm must already be installed.
 
-Download `dsh-automemory-0.3.5.tgz` and `SHA256SUMS` from the [v0.3.5 Release](https://github.com/hope586/dsh-automemory/releases/tag/v0.3.5). Verify and install from the download directory:
+Download `dsh-automemory-0.3.7.tgz` and `SHA256SUMS` from the [v0.3.7 Release](https://github.com/hope586/dsh-automemory/releases/tag/v0.3.7). Verify and install from the download directory:
 
 ```bash
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-automemory-0.3.5.tgz
+dsh plugin --profile web add ./dsh-automemory-0.3.7.tgz
 ```
 
 On the verified host, this command automatically adds `dsh-automemory` to `dsh.profile.bundles` in `$DSH_HOME/profiles/web/package.json`. Check that the entry exists, preserve other bundles and restart that profile; do not add it twice.
@@ -35,7 +37,7 @@ On the verified host, this command automatically adds `dsh-automemory` to `dsh.p
 Pinned GitHub installation:
 
 ```bash
-dsh plugin --profile web add github:hope586/dsh-automemory#v0.3.5
+dsh plugin --profile web add github:hope586/dsh-automemory#v0.3.7
 ```
 
 Both the release archive and tag include prebuilt `lib/`; users do not need a build step or development dependencies. Distribution is through GitHub, **not the npm registry**. `private:true` prevents accidental npm publishing; it does not restrict the MIT license or GitHub installation.

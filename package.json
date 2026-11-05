@@ -1,6 +1,6 @@
 {
   "name": "dsh-automemory",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "private": true,
   "type": "module",
   "description": "Project-scoped automatic memory and a shared user profile for DeepSeek Harness",
@@ -31,7 +31,8 @@
     "CONTRIBUTING.md",
     "SECURITY.md",
     "docs/CI.md",
-    "docs/ci-example.yml"
+    "docs/ci-example.yml",
+    "docs/RELEASE-NOTES-v0.3.7.md"
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0",

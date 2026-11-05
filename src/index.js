@@ -72,6 +72,9 @@ export function apply(ctx, config = {}) {
   ctx.systemPrompt.section({ name: 'automemory:main', order: 18000, interpolate: false, text: MAIN_PROMPT });
   const stop = installTurnMemory(ctx, { prepareTurn: info => controller.prepareTurn(info), onProvided: info => controller.onProvided(info), onSessionEvent: info => controller.onSessionEvent(info), onError: e => controller.report(e) });
   ctx.effect(() => stop);
+  // The same native disposal signal that retires turn-memory bookkeeping also
+  // releases this controller's per-session maps; both share the ctx event bus.
+  ctx.effect(() => ctx.on('session/disposed', session => controller.onSessionDisposed(session)));
   if (ctx.inject) ctx.inject(['connection'], c => mountApi(c, controller));
   return controller;
 }
@@ -80,12 +83,48 @@ function profileState(controller) {
   const profile = controller.profile.read();
   return { ...profile, content: profile.text, version: profile.hash, changes: controller.profile.activity().map(x => ({ ...x, id: x.request_id, time: x.at })) };
 }
+const MODEL_ROUTES_TTL_MS = 30000;
+const MODEL_ROUTES_FETCH_TIMEOUT_MS = 5000;
+/** The legacy `models` field stays in /global and /state responses for API
+ * compatibility, but it no longer drives the settings selector (the native
+ * catalog does). Enumerating every provider catalog is potentially network
+ * I/O, and the memory page polls these endpoints every 15 seconds plus focus
+ * wakeups, so serve the field from a short per-controller cache and fetch
+ * provider catalogs in parallel instead of sequentially. Unavailable catalogs
+ * never fabricated routes; they are cached as empty for the same window so a
+ * degraded provider cannot stretch every state read. A changed provider list
+ * invalidates immediately. Each catalog listing is bounded by the same timeout
+ * contract as host capability checks, so one hung provider cannot hang state
+ * reads forever; the losing underlying call is simply not awaited further. An
+ * in-flight enumeration is shared by concurrent readers, and a stale
+ * completion never overwrites a newer provider list's cache entry. */
 async function modelRoutes(controller) {
-  const models = [];
-  for (const provider of controller.ctx.llm.listProviders()) {
-    try { for (const m of await controller.ctx.llm.listModels(provider.id)) models.push({ provider: provider.id, model: m.id, label: m.name }); } catch { /* Unavailable catalogs do not fabricate routes. */ }
+  const providers = controller.ctx.llm.listProviders();
+  const key = providers.map(provider => provider.id).join('\n');
+  const cached = controller._modelRoutesCache;
+  if (cached?.key === key) {
+    if (Date.now() - cached.at < MODEL_ROUTES_TTL_MS) return cached.models;
+    if (cached.pending) return cached.pending;
   }
-  return models;
+  const timeoutMs = controller._modelRoutesFetchTimeoutMs ?? MODEL_ROUTES_FETCH_TIMEOUT_MS;
+  const pending = Promise.all(providers.map(async provider => {
+    let timer;
+    const bounded = new Promise((_resolve, reject) => { timer = setTimeout(() => reject(new Error('Model catalog listing timed out.')), timeoutMs); });
+    try {
+      const listing = await Promise.race([controller.ctx.llm.listModels(provider.id), bounded]);
+      return listing.map(m => ({ provider: provider.id, model: m.id, label: m.name }));
+    } catch { return []; /* Unavailable catalogs do not fabricate routes. */ }
+    finally { clearTimeout(timer); }
+  })).then(models => {
+    const value = models.flat();
+    // The provider list can change while this enumeration is in flight. A
+    // newer enumeration owns the cache slot now; this completion must not
+    // clobber it with an older key's result.
+    if (controller._modelRoutesCache?.pending === pending) controller._modelRoutesCache = { key, at: Date.now(), models: value, pending: null };
+    return value;
+  });
+  controller._modelRoutesCache = { key, at: cached?.key === key ? cached.at : 0, models: cached?.key === key ? cached.models : [], pending };
+  return pending;
 }
 export async function globalStateFor(controller) {
   return { version, build: buildId, sessionId: null, userProfile: profileState(controller), settings: controller.settings.get(), models: await modelRoutes(controller), usage: controller.settings.usage(), capabilities: { settings: true, userProfileToggle: true, manage: true, managementRequiresSession: false } };

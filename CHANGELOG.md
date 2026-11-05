@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.3.6 — 2026-11-04
+## 0.3.7 — 2026-11-05
+
+Performance and robustness patch release. It also ships the previously unreleased 0.3.6 model-selection changes; 0.3.6 was not published separately, so 0.3.7 is the first public release containing them. No data or settings migration is required from 0.3.5.
+
+- Serve the UI-API `models` field of `/state` and `/global` from a server-side cache (30-second TTL, immediate invalidation when the provider list changes, parallel enumeration, bounded per-provider wait). The response shape is unchanged; values may lag host configuration by up to the TTL. The settings model picker reads the live native catalog and is unaffected.
+- Replace one open-issue subquery per memory in browse and index rendering with a single grouped query. Output is identical, including per-issue reference ordering.
+- Skip write transactions for duplicate or out-of-order session events; genuinely new events keep one write transaction each. Workspace enable/disable state is re-read under the write lock, so a switch flipped by another host between the pre-check and the transaction is honored.
+- Release per-session controller bookkeeping (tool-call sequences, pending reads, session bindings, turn snapshots) when the host disposes a session.
+- Sweep job-evidence directories left behind by crashed workers or replaced leases once the task reaches a terminal state; running tasks keep their evidence and plugin cleanup never touches host data.
+- Guard model-route enumeration races: a stale enumeration cannot overwrite a newer cache entry, and a hung provider listing returns a bounded empty result and recovers after the TTL.
+- Add `scripts/bench.mjs` so measurements can be reproduced on local synthetic fixtures. See [0.3.7 release notes](docs/RELEASE-NOTES-v0.3.7.md) for what those measurements do and do not establish.
+
+## 0.3.6 — 2026-11-04 (not published separately; first shipped in 0.3.7)
 
 - Replace separate provider/model text fields with a provider-grouped selector backed by the same native model catalog as conversations, using the host Menu component.
 - Select the exact provider, model and supported reasoning effort together; G2 has an explicit “Follow originating session” option.

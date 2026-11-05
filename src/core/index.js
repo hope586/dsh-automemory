@@ -167,7 +167,22 @@ export class MemoryStore {
   }
   updateSessionHead({ workspaceId, sessionId, headSeq, hasNewEvidence = true, eventOnly = false, observeOnly = false }) {
     requireValue(safeSeq(headSeq), 'INVALID_PROPOSAL', 'invalid head sequence');
+    this._workspace(workspaceId, false);
+    const before = this._session(workspaceId, sessionId);
+    const observedBefore = this._get('SELECT head_seq FROM evidence_observed WHERE workspace_id=? AND session_id=?', workspaceId, sessionId)?.head_seq ?? before.head_seq;
+    // A duplicate, older or out-of-order event can never be admitted (admission
+    // requires passing the observed head) and can never advance either head,
+    // regardless of the enable switch or managed start. Committing that empty
+    // transaction would only contend the SQLite write lock that live
+    // multi-host writers depend on, so skip it. These pre-lock reads are used
+    // for this decision only; racing writers can only make the heads larger,
+    // which makes the same skip decision more conservative, never less.
+    if (headSeq <= before.head_seq && headSeq <= observedBefore) return before;
     return this._tx(() => {
+      // Every admission decision is re-read under the write lock: another host
+      // can flip the enable switch between the pre-lock reads and this BEGIN
+      // IMMEDIATE, and an event observed while disabled must stay excluded
+      // even though the pre-lock snapshot still saw the workspace enabled.
       const ws = this._workspace(workspaceId, false), s = this._session(workspaceId, sessionId);
       const observed = this._get('SELECT head_seq FROM evidence_observed WHERE workspace_id=? AND session_id=?', workspaceId, sessionId)?.head_seq ?? s.head_seq;
       let admitted = false;
@@ -235,6 +250,17 @@ export class MemoryStore {
   _issueRefs(workspaceId, memoryId) {
     return this._all("SELECT i.id FROM issues i JOIN issue_memories m ON i.workspace_id=m.workspace_id AND i.id=m.issue_id WHERE m.workspace_id=? AND m.memory_id=? AND i.status='open' ORDER BY i.id", workspaceId, memoryId).map(x => x.id);
   }
+  /** One grouped query for every open-issue reference in a workspace. Browse,
+   * state reads and index rendering previously issued one join per memory row;
+   * the UI polls these paths every 15 seconds. Ordering matches _issueRefs. */
+  _openIssueRefs(workspaceId) {
+    const grouped = new Map();
+    for (const row of this._all("SELECT m.memory_id AS memory_id, i.id AS issue_id FROM issue_memories m JOIN issues i ON i.workspace_id=m.workspace_id AND i.id=m.issue_id WHERE m.workspace_id=? AND i.status='open' ORDER BY i.id", workspaceId)) {
+      const list = grouped.get(row.memory_id);
+      if (list) list.push(row.issue_id); else grouped.set(row.memory_id, [row.issue_id]);
+    }
+    return grouped;
+  }
   _readOne(workspaceId, memoryId, includeNoncurrent) {
     const row = this._get('SELECT * FROM memories WHERE workspace_id=? AND id=?', workspaceId, memoryId);
     if (!row) {
@@ -282,7 +308,8 @@ export class MemoryStore {
     const clauses = ['workspace_id=?', `status IN (${statuses.map(() => '?').join(',')})`], args = [workspaceId, ...statuses];
     if (category) { clauses.push('category=?'); args.push(category); }
     if (group) { clauses.push('group_name=?'); args.push(group); }
-    return this._all(`SELECT id,version,status,title,category,group_name,index_hint,content FROM memories WHERE ${clauses.join(' AND ')} ORDER BY category,group_name,id`, ...args).map(row => ({ id: row.id, version: version(row.version), status: row.status, title: row.title, category: row.category, group: row.group_name, index_hint: renderIndexHint(parse(row.content)), issue_refs: this._issueRefs(workspaceId, row.id) }));
+    const openIssues = this._openIssueRefs(workspaceId);
+    return this._all(`SELECT id,version,status,title,category,group_name,index_hint,content FROM memories WHERE ${clauses.join(' AND ')} ORDER BY category,group_name,id`, ...args).map(row => ({ id: row.id, version: version(row.version), status: row.status, title: row.title, category: row.category, group: row.group_name, index_hint: renderIndexHint(parse(row.content)), issue_refs: openIssues.get(row.id) || [] }));
   }
   browse({ workspaceId, category, statuses = ['current'], group, cursor, pageSize = 100, forManagement = false }) {
     requireValue(Array.isArray(statuses) && statuses.length && statuses.every(x => ['current', 'archived', 'retracted'].includes(x)), 'INVALID_PROPOSAL', 'invalid statuses');

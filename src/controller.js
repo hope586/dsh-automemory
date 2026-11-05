@@ -105,6 +105,19 @@ export class MemoryController {
     const hasNewEvidence = event.type === 'user/message' && event.data?.source?.kind === 'user' || event.type === 'assistant/message' && !(event.data.message.content || []).every(b => b.type === 'tool-call' && /^(memory_|user_profile_)/.test(b.name)) || event.type === 'tool/result' && !ownTool;
     this.store.updateSessionHead({ workspaceId: workspace.id, sessionId: session.id, headSeq: event.seq, hasNewEvidence: !!hasNewEvidence, eventOnly: true });
   }
+  /** Native sessions are disposed long before the host process ends. Without
+   * this hook their bindings, tool-call sequences, undelivered read markers
+   * (which retain memory bodies) and turn profile snapshots accumulate for the
+   * whole host lifetime. Disposal is terminal for that session identity: no
+   * tool of the same call can still be executing afterwards. */
+  onSessionDisposed(session) {
+    if (this.closed || typeof session?.id !== 'string') return;
+    this.sessions.delete(session.id);
+    const prefix = session.id + ':';
+    for (const key of this.callSeqs.keys()) if (key.startsWith(prefix)) this.callSeqs.delete(key);
+    for (const key of this.pendingReads.keys()) if (key.startsWith(prefix)) this.pendingReads.delete(key);
+    for (const key of this.turnProfiles.keys()) if (key.startsWith(prefix)) this.turnProfiles.delete(key);
+  }
   requestIdentity(exec) {
     const seq = this.callSeqs.get(`${exec.agent.id}:${exec.callId}`);
     if (!Number.isSafeInteger(seq)) throw failure('TOOL_CONTEXT_UNAVAILABLE', 'A durable tool-call event is required to bind a memory operation.');
@@ -259,7 +272,7 @@ export class MemoryController {
     }
     const config = this.settings.get(); this.store.setDreamIntervalMs(config.dreamIntervalHours * 3600000);
     this.store.retentionDays = config.auditRetentionDays; this.profile.retentionDays = config.auditRetentionDays;
-    if (!this.lastPrune || Date.now() - this.lastPrune >= 3600000) { this.store.pruneAudit(); this.profile.activity({ limit: 1 }); this.lastPrune = Date.now(); }
+    if (!this.lastPrune || Date.now() - this.lastPrune >= 3600000) { this.store.pruneAudit(); this.profile.activity({ limit: 1 }); try { this.sweepAllJobEvidence(); } catch (error) { this.report(error); } this.lastPrune = Date.now(); }
     try { await this.cleanupRoleSessions(); } catch (error) { this.report(error); }
     if (this.closed) return;
     if (this.activeJob) {
@@ -283,7 +296,13 @@ export class MemoryController {
         return;
       }
       this.report(error, { workspaceId: job.workspace_id, jobId: job.id }); try { this.store.failJob({ lease: job.lease, code: error.code || 'AUDIT_FAILED', message: error.message, retryable: false }); } catch (e) { this.report(e); }
-    }).finally(() => { this.active = null; this.activeJob = null; this.jobAbort = null; });
+    }).finally(() => {
+      // The job has settled (completed, failed terminal, cancelled or returned
+      // to the queue) before this finally runs, so the terminal check inside
+      // decides correctly; a deferred or re-claimed job keeps its evidence.
+      try { this.sweepJobEvidence(job.id); } catch (e) { this.report(e, { workspaceId: job.workspace_id, jobId: job.id }); }
+      this.active = null; this.activeJob = null; this.jobAbort = null;
+    });
   }
   async evidence(job, workspace) {
     const dir = this.evidenceDirectory(job);
@@ -335,6 +354,27 @@ export class MemoryController {
     return path.join(this.dataDir, 'job-evidence', job.id, `${sha(job.lease?.owner || this.owner).slice(0, 16)}-${job.lease?.token ?? 0}`);
   }
   cleanupEvidence(job) { rmSync(this.evidenceDirectory(job), { recursive: true, force: true }); }
+  /** Evidence files are staged per lease attempt. A crashed worker or an
+   * expired-lease replacement leaves its attempt directory behind with no
+   * finally block to remove it, and full conversation projections can be
+   * large, so finished jobs remove their whole root once no attempt can still
+   * be writing. A terminal job can never be claimed again, so no live worker
+   * owns that root; a still-running job keeps every attempt directory. */
+  sweepJobEvidence(jobId) {
+    const root = path.join(this.dataDir, 'job-evidence', jobId);
+    if (!existsSync(root)) return;
+    const job = this.store.getJob(jobId);
+    if (job && !['completed', 'failed', 'cancelled'].includes(job.status)) return;
+    rmSync(root, { recursive: true, force: true });
+  }
+  sweepAllJobEvidence() {
+    const root = path.join(this.dataDir, 'job-evidence');
+    if (!existsSync(root)) return;
+    for (const entry of readdirSync(root, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      this.sweepJobEvidence(entry.name);
+    }
+  }
   sourceAliases(job) {
     const root = path.join(this.dataDir, 'job-evidence', job.id);
     const directories = new Set([root, this.evidenceDirectory(job)]);

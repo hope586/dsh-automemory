@@ -2,9 +2,11 @@
 
 [English](README.en.md) · [使用说明](docs/usage.md) · [数据与隐私](docs/privacy.md)
 
+> 当前版本 **0.3.7**：包含首次发布的原生模型选择（原 0.3.6，未单独发布）与 2026-11-05 审查轮的性能、健壮性修复。详见 [0.3.7 发布说明](docs/RELEASE-NOTES-v0.3.7.md) 和 [版本记录](CHANGELOG.md)。
+
 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 提供按项目隔离的自动记忆：延续会话中形成的决定、理由、进展和协作约定，并在独立记忆页面查看、解释和调整。
 
-这是独立社区插件，采用 MIT 协议，与 DeepSeek 官方没有隶属关系。当前版本 **0.3.5**，处于 0.x 阶段。记忆由模型选择性维护，可能漏记、过度概括或沿用过时内容；它不能替代当前项目文件和用户判断。
+这是独立社区插件，采用 MIT 协议，与 DeepSeek 官方没有隶属关系。当前版本 **0.3.7**，处于 0.x 阶段。记忆由模型选择性维护，可能漏记、过度概括或沿用过时内容；它不能替代当前项目文件和用户判断。
 
 ## 可以做什么
 
@@ -21,11 +23,11 @@
 
 已实测基线：**DSH 0.2.1-rc.5、Node 22.22.2、macOS、Web/Desktop**。包声明的版本范围不等于其他版本或平台已实测。需要已安装 DSH 和 pnpm。
 
-从 [v0.3.5 Release](https://github.com/hope586/dsh-automemory/releases/tag/v0.3.5) 下载 `dsh-automemory-0.3.5.tgz` 和 `SHA256SUMS`，在下载目录校验后安装：
+从 [v0.3.7 Release](https://github.com/hope586/dsh-automemory/releases/tag/v0.3.7) 下载 `dsh-automemory-0.3.7.tgz` 和 `SHA256SUMS`，在下载目录校验后安装：
 
 ```bash
 shasum -a 256 -c SHA256SUMS
-dsh plugin --profile web add ./dsh-automemory-0.3.5.tgz
+dsh plugin --profile web add ./dsh-automemory-0.3.7.tgz
 ```
 
 在已验证的宿主中，这条命令会自动将 `dsh-automemory` 加入 `$DSH_HOME/profiles/web/package.json` 的 `dsh.profile.bundles`。核对该条目存在并保留其他 bundle，随后重启该 profile；不要重复添加。
@@ -35,7 +37,7 @@ dsh plugin --profile web add ./dsh-automemory-0.3.5.tgz
 固定版本的 GitHub 安装方式：
 
 ```bash
-dsh plugin --profile web add github:hope586/dsh-automemory#v0.3.5
+dsh plugin --profile web add github:hope586/dsh-automemory#v0.3.7
 ```
 
 发行包和 tag 都包含预构建 `lib/`，安装用户无需构建或复制开发依赖。当前通过 GitHub 发布，**没有发布到 npm registry**；`private:true` 用于防止误发 npm，不影响 MIT 开源和 GitHub 安装。
